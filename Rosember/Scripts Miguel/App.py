@@ -34,7 +34,9 @@ class Aplicacion:
             'B': ['3', '4'],
             'C': ['5', '6'],
             'D': ['7', '8'],
-            'Mapas':['Ordenar archivos', 'Enviar correos']
+            'Mapas':['Enviar correos'],
+            'Whatsapp':['Enviar mensajes']
+
         }
         
         self.botones = {}
@@ -54,7 +56,10 @@ class Aplicacion:
     def _run_script_thread(self, boton):
         try:
             # Ejecutar el script main.py
-            result = subprocess.run(["python", f"C:/Geodata/Mapas_Despoblacion/Scripts Miguel/{boton}/main.py"], capture_output=True, text=True)
+            #C:\Users\jsbejaranob\Desktop\incauca\Rosember\Scripts Miguel
+            #result = subprocess.run(["python", f"C:/Geodata/Mapas_Despoblacion/Scripts Miguel/{boton}/main.py"], capture_output=True, text=True)----------------volver a cambiar ruta
+
+            result = subprocess.run(["python", f"C:/Users/jsbejaranob/Desktop/incauca/Rosember/Scripts Miguel/{boton}/main.py"], capture_output=True, text=True)
             if result.returncode == 0:
                 self.show_message("Ejecución Exitosa", f"El script {boton} se ejecutó correctamente.")
             else:
