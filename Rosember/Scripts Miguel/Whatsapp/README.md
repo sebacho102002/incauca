@@ -4,3 +4,4 @@ entonces el script va a relacionar los que tienen el Si con los correos haciendo
 
 El script debe permitir realizar acciones de guardado y desarrollo de informes.
 
+este archivo utiliza la misma base de datos creada para el envio de correos (antes de vuelos).
