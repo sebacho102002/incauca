@@ -68,7 +68,9 @@ class GeoDataProcessor:
             return None
 
 def main():
-    rSte = r"\\INDICA07\Geodata\Incauca_Gen\WGS84\shp\ste.shp"
+    #rSte = r"\\INDICA07\Geodata\Incauca_Gen\WGS84\shp\ste.shp"
+    rSte = r"C:/Geodata/Incauca_Qgis/Capas_existentes/ste.shp"
+    
     rXlsx = "C:/Geodata/Mapas_Despoblacion/Envio Programa vuelo/join_drone.xlsx"
 
     # Crear instancia de GeoDataProcessor

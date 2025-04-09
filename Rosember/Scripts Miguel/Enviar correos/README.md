@@ -1,14 +1,73 @@
-Este script lee rutas especificas, por lo tanto, si va a cambiar la ubicacion de los archivos tambien debe de cambiar las rutas dentro de este script.
+======================================
+Manual de Uso: Script de Envío de Correos
+======================================
 
-Logica al usuario:
+Descripción:
+------------
+Este script automatiza el envío de correos electrónicos mediante Microsoft Outlook. 
+Permite procesar datos desde archivos Excel para generar archivos separados por 
+zonas y proveedores, y enviarlos como correos electrónicos con adjuntos.
 
-este script realiza la revisión del excel donde se encuentran las suertes con edad suficiente para vuelo. filtra el archivo separando cada uno por zonas y enviandolo por correo a cada uno de los jefes de la zona. las suertes que son de proveedores tambien se le envían a cada uno de los correos de los proveedores descritos en la base de datos de los correos (debe de coincidor el nombre de la hacienda del excel con el de la base de datos, sino va a tener error al enviar), generando una nueva carpeta dentro de la anterior que se llamaría "proveedores". genera informe de los correos enviados y genera un archivo para cada uno.
-Primero el script realiza el ETL (filtro y generacion de nuevos archivos) antes de enviar por correo para que el usuario tenga la oprtunidad de revisar los archivos creados y así poder presionar el botón de envío por correo
+Características:
+---------------
+- Procesa dos archivos Excel:
+  1. Archivo principal: Contiene información sobre suertes y haciendas.
+  2. Archivo de correos: Lista los proveedores y sus respectivas haciendas.
+- Genera archivos Excel separados para cada zona y proveedor.
+- Envío de correos:
+  - **Zonas**: Mensajes generales con datos de la zona.
+  - **Proveedores**: Correos personalizados con la información específica del proveedor.
+- Notifica las haciendas que no tienen un proveedor asignado.
 
+Requisitos:
+-----------
+1. Tener instalado Python 3.9 o superior.
+2. Instalar las siguientes librerías:
+   - pandas
+   - pywin32
+   Comando para instalar: 
+       pip install pandas pywin32
+3. Tener Microsoft Outlook configurado con una cuenta activa.
+4. Estructura de los archivos Excel:
+   - Archivo principal:
+     - Columnas requeridas: `Zona`, `Hacienda`, `Tenencia`, `Ult.Cor/Siem`.
+   - Archivo de correos:
+     - Columnas requeridas: `Proveedor`, `Hacienda`, `Correo Principal`, `CC`.
 
-Logica computacional: 
+Uso del Script:
+---------------
+1. Ejecutar el script:
+   python envio_correos.py
+2. Aparecerá una ventana emergente para seleccionar el archivo principal (Excel).
+3. Confirmar si deseas proceder con el envío de correos.
+4. El script procesará los datos, generará los archivos necesarios y enviará los correos.
+5. Se notificará cualquier error o las haciendas sin proveedor asignado.
 
-sl script utiliza libreria win32 para el envío de archivos mediante correo electronico el cual es el que está anclado principalmente al pc.
-Primeramente hace un filtrado de el archivo excel, filtrando por tipo de zona y generando un nuevo archivo por cada zona. dentro del script hay un espacio donde están los correos de todos los jefes, donde automaticamente se envian a esos correos asociados los archivos correspondientes a cada zona. paralelamente tambien se crean otro archivos en una carpeta nueva (dir creada por codigo) donde se guardan los datos que van a cada proveedor para autorizacion de vuelo. para los proveedores, como son varios, hay una base de datos donde asociamos cada nombre de la hacienda con un correo. el script compara el nombre de la zona con el nombre de la hacienda entre uno y otro excel, cogiendo los correos asociados y enviando los datos correspondientes. 
+Configuraciones Personalizables:
+--------------------------------
+1. Rutas de los archivos:
+   - Cambiar la ruta predeterminada para el archivo principal en la función `seleccionar_archivo`.
+   - Verificar la ruta del archivo de correos:
+       correos_path = 'C:/Geodata/Mapas_Despoblacion/Envio Programa vuelo/Correos.xlsx'
 
-tener cuidado al cambiar las rutas especificas para el correcto funcionamiento del prpograma. 
+2. Cuerpo y asunto de los correos:
+   - Modificar las variables `subject` y `body` para personalizar los mensajes.
+
+Errores Comunes:
+----------------
+1. "Archivo no encontrado":
+   - Asegúrate de seleccionar un archivo Excel válido.
+2. Error en Outlook:
+   - Verifica que Microsoft Outlook esté configurado correctamente.
+3. Haciendas faltantes:
+   - Revisa y actualiza el archivo de correos con las haciendas que faltan.
+
+Mantenimiento:
+--------------
+1. Verifica regularmente que las rutas de los archivos sean válidas.
+2. Mantén actualizada la lista de correos en el archivo correspondiente.
+3. Asegúrate de que los datos de los archivos Excel cumplen con la estructura requerida.
+
+======================================
+Fin del Manual
+======================================

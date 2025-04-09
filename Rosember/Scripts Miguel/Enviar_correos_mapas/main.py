@@ -9,7 +9,8 @@ excel_path = r'C:\Geodata\Mapas_Despoblacion\Scripts Miguel\Enviar_correos_mapas
 base_folder = r'C:\Geodata\Mapas_Despoblacion\Envio mapas zonas'
 # Número de la semana actual
 current_week = datetime.datetime.now().isocalendar()[1]
-folder_name = f"Zonas 2024{current_week:02d}"
+
+folder_name = f"Zonas 2025{current_week:02d}"
 
 # Leer las hojas en el archivo Excel
 xls = pd.ExcelFile(excel_path)
