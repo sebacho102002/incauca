@@ -33,11 +33,9 @@ class Aplicacion:
         # Botones laterales con colores mejorados
         self.botones_laterales = {
             'Despoblación': ['Recibir_correos', 'Crear_poligonos', 'Enviar_correos_mapas', 'Enviar correos'],
-            'B': ['3', '4'],
-            'C': ['5', '6'],
-            'D': ['7', '8'],
-            'Mapas':['Enviar correos'],
-            'Whatsapp':['Enviar mensajes']
+            'Buscar': ['Annotations', '4'],
+            'Abono': ['5', '6'],
+            'D': ['7', '8']
         }
         
         self.botones = {}
