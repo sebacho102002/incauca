@@ -186,7 +186,7 @@ El costo por hectárea de esta tecnología es de $ 30.500 acordada con la empres
         mostrar_exito("Todos los correos se enviaron exitosamente.")
 
     except Exception as e:
-        mostrar_error(f"Ocurrió un error: {e}")
+        mostrar_error(f"Ocurrió un error: {e}") #si todo falla, NO LLAMEN A SEBASTIAN! Dejenlo descansar......
 
 if __name__ == "__main__":
     main()
