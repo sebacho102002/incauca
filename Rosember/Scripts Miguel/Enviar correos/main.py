@@ -4,15 +4,9 @@ import win32com.client as win32
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import datetime
-import locale
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-
-# Establecer la localización a español para que los meses salgan en español
-try:
-    locale.setlocale(locale.LC_TIME, 'es_ES')
-except:
-    locale.setlocale(locale.LC_TIME, 'es_CO.utf8')
+from shutil import copyfile
 
 def enviar_email(to_addrs, cc_addrs, subject, body, archivos):
     outlook = win32.Dispatch('outlook.application')
@@ -25,93 +19,114 @@ def enviar_email(to_addrs, cc_addrs, subject, body, archivos):
         mail.Attachments.Add(archivo)
     mail.Send()
 
+def confirmar_envio():
+    root = tk.Tk()
+    root.withdraw()
+    return messagebox.askyesno("Confirmación", "Los archivos han sido creados. ¿Desea enviar los correos?")
+
 def seleccionar_archivo():
     root = tk.Tk()
     root.withdraw()
     ruta_predeterminada = 'C:\\Geodata\\Mapas_Despoblacion\\Envio Programa vuelo'
-    archivo = filedialog.askopenfilename(
+    archivo_seleccionado = filedialog.askopenfilename(
         initialdir=ruta_predeterminada,
         title="Seleccionar archivo Excel",
         filetypes=(("Archivos Excel", "*.xlsx"), ("Todos los archivos", "*.*"))
     )
-    if not archivo:
-        messagebox.showerror("Error", "No se seleccionó ningún archivo.")
-        raise FileNotFoundError("No se seleccionó ningún archivo.")
-    return archivo
+    if not archivo_seleccionado:
+        messagebox.showerror("Error", "No se seleccionó ningún archivo. El proceso fue cancelado.")
+        raise FileNotFoundError("No se seleccionó ningún archivo. El proceso fue cancelado.")
+    return archivo_seleccionado
 
-def mostrar_confirmacion():
+def notificar_haciendas_faltantes(haciendas_faltantes):
     root = tk.Tk()
     root.withdraw()
-    return messagebox.askyesno("Confirmación", "¿Desea enviar los correos generados?")
-
-def mostrar_mensaje(titulo, mensaje):
-    root = tk.Tk()
-    root.withdraw()
-    messagebox.showinfo(titulo, mensaje)
+    messagebox.showinfo("Haciendas Faltantes", f"Las siguientes haciendas no tienen un proveedor asignado:\n{', '.join(haciendas_faltantes)}")
 
 def mostrar_error(mensaje):
     root = tk.Tk()
     root.withdraw()
     messagebox.showerror("Error", mensaje)
 
-def copiar_formato_y_datos(df, archivo_base, hoja_salida, archivo_salida):
-    wb_base = load_workbook(archivo_base)
-    ws_base = wb_base.active
+def mostrar_exito(mensaje):
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showinfo("Proceso Completado", mensaje)
 
-    wb_nuevo = load_workbook(archivo_base)
-    wb_nuevo.remove(wb_nuevo.active)
-    ws_nuevo = wb_nuevo.create_sheet(hoja_salida)
+def guardar_con_estilo(template_path, df, output_path, sheet_name):
+    copyfile(template_path, output_path)
+    wb = load_workbook(output_path)
+    ws = wb.active
+    ws.title = sheet_name
 
-    # Copiar formato
-    for row in ws_base.iter_rows():
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
         for cell in row:
-            new_cell = ws_nuevo.cell(row=cell.row, column=cell.col_idx, value=cell.value)
-            if cell.has_style:
-                new_cell._style = cell._style
+            cell.value = None
 
-    # Sobrescribir con datos del DataFrame
-    for i, fila in enumerate(dataframe_to_rows(df, index=False, header=True), start=1):
-        for j, valor in enumerate(fila, start=1):
-            ws_nuevo.cell(row=i, column=j, value=valor)
+    for i, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        for j, value in enumerate(row, start=1):
+            cell = ws.cell(row=i, column=j)
+            header = ws.cell(row=1, column=j).value
+            if header == "Hacienda":
+                cell.number_format = '@'
+                cell.value = str(value).zfill(6)
+            else:
+                cell.value = value
 
-    # Ajustar anchos de columna A y C
-    ws_nuevo.column_dimensions['A'].width = 25
-    ws_nuevo.column_dimensions['C'].width = 35
-    ws_nuevo.column_dimensions['J'].width = 25
+    # Ajustar anchos de columnas
+    for col in ws.iter_cols(min_row=1, max_row=1):
+        header = col[0].value
+        if header == " Nombre":
+            ws.column_dimensions[col[0].column_letter].width = 30 #ojo con el espacio en la columna nombre. viene asi desde mapa de despoblacion y se trata igual
+        elif header == "Zona":
+            ws.column_dimensions[col[0].column_letter].width = 25
 
-    wb_nuevo.save(archivo_salida)
+    wb.save(output_path)
 
 def main():
     try:
-        archivo_datos = seleccionar_archivo()
-        archivo_correos = 'C:\\Geodata\\Mapas_Despoblacion\\Envio Programa vuelo\\Correos.xlsx'
-        carpeta_salida = os.path.dirname(archivo_datos)
-        carpeta_proveedores = os.path.join(carpeta_salida, 'Proveedores')
-        os.makedirs(carpeta_proveedores, exist_ok=True)
+        file_path = seleccionar_archivo()
+        correos_path = 'C:\\Geodata\\Mapas_Despoblacion\\Envio Programa vuelo\\Correos.xlsx'
+        output_folder = os.path.dirname(file_path)
+        output_proveedores = os.path.join(output_folder, 'Proveedores')
+        os.makedirs(output_proveedores, exist_ok=True)
 
-        df = pd.read_excel(archivo_datos, sheet_name='Hoja1')
-        correos_df = pd.read_excel(archivo_correos)
-
+        df = pd.read_excel(file_path, sheet_name='Hoja1')
+        correos_df = pd.read_excel(correos_path)
         df['Ult.Cor/Siem'] = pd.to_datetime(df['Ult.Cor/Siem'], errors='coerce').dt.strftime('%d/%m/%Y')
-
         df_proveedores = df[df['Tenencia'] == 51]
         df = df[df['Tenencia'] != 51]
+        zonas_unicas = df['Zona'].unique()
 
-        archivo_prov = os.path.join(carpeta_proveedores, 'Incauca_Proveedores.xlsx')
-        copiar_formato_y_datos(df_proveedores, archivo_datos, 'Proveedores', archivo_prov)
+        archivos_generados = []
+        for zona in zonas_unicas:
+            df_filtrado = df[df['Zona'] == zona]
+            output_file = os.path.join(output_folder, f'{zona.replace(" ", "_")}.xlsx')
+            guardar_con_estilo(file_path, df_filtrado, output_file, zona)
+            archivos_generados.append((zona, output_file))
 
-        archivos_zonas = []
-        for zona in df['Zona'].unique():
-            df_zona = df[df['Zona'] == zona]
-            archivo_zona = os.path.join(carpeta_salida, f'{zona.replace(" ", "_")}.xlsx')
-            copiar_formato_y_datos(df_zona, archivo_datos, zona, archivo_zona)
-            archivos_zonas.append((zona, archivo_zona))
+        archivos_proveedores = {}
+        proveedores_unicos = correos_df['Proveedor'].unique()
+        haciendas_faltantes = []
 
-        if not mostrar_confirmacion():
-            mostrar_error("El proceso fue cancelado.")
+        for proveedor in proveedores_unicos:
+            correos_proveedor = correos_df[correos_df['Proveedor'] == proveedor]
+            haciendas_proveedor = correos_proveedor['Hacienda'].values
+            df_proveedor_filtrado = df_proveedores[df_proveedores['Hacienda'].isin(haciendas_proveedor)]
+
+            if df_proveedor_filtrado.empty:
+                haciendas_faltantes.extend(haciendas_proveedor)
+                continue
+
+            output_file = os.path.join(output_proveedores, f'Proveedores_{proveedor.replace(" ", "_")}.xlsx')
+            guardar_con_estilo(file_path, df_proveedor_filtrado, output_file, proveedor)
+            archivos_proveedores[proveedor] = (output_file, correos_proveedor)
+
+        if not confirmar_envio():
+            mostrar_error("El proceso fue cancelado por el usuario.")
             return
 
-        mes_actual = datetime.datetime.now().strftime('%B')
+        mes_actual = datetime.datetime.now().strftime("%B")
 
         correos_por_zona = {
             'Oriental Incauca': ('efcastillo@incauca.com', 'dfcollazos@incauca.com', 'japenao@incauca.com'),
@@ -123,12 +138,17 @@ def main():
             'Sur Occidental Incauca': ('lsaavedra@incauca.com', 'ammartinez@incauca.com', 'japenao@incauca.com')
         }
 
-        for zona, archivo_zona in archivos_zonas:
-            to, opcional, cc = correos_por_zona.get(zona, ('default@correo.com', '', 'defaultcc@correo.com'))
-            destinatarios = f"{to};{opcional}" if opcional else to
+        for zona, output_file in archivos_generados:
+            to_addrs_primary, to_addrs_optional, cc_addrs = correos_por_zona.get(
+                zona,
+                ('correo_predeterminado@ejemplo.com', '', 'copia_predeterminado@ejemplo.com')
+            )
+            to_addrs = to_addrs_primary
+            if to_addrs_optional:
+                to_addrs += f";{to_addrs_optional}"
 
-            asunto = f'Fotografía Aérea Drone 2025 {zona} - {mes_actual.capitalize()}'
-            cuerpo = f"""Saludos,
+            subject = f'Fotografía Aérea Drone 2025 {zona} - {mes_actual}'
+            body = """Saludos,
 
 Envío el listado de suertes para tomar fotografías aéreas con Drone la siguiente semana y determinar el mapa de resiembra, revisar las edades que se propone y señalar su aprobación.
 
@@ -138,27 +158,15 @@ También señalar las suertes que no se realizan por los siguientes motivos: se 
 
 Los mapas de despoblación de las suertes aprobadas llegarán de 3 a 5 días después de la toma de fotografías, por favor esperar para realizar la labor de resiembra.
 
-Gracias por la atención. Cordialmente Rosemberg Moreno - Agricultura de precisión Incauca."""
+Gracias por la atención. Cordialmente Rosemberg Moreno  - Agricultura de precisión Incauca."""
+            enviar_email(to_addrs, cc_addrs, subject, body, [output_file])
 
-            enviar_email(destinatarios, cc, asunto, cuerpo, [archivo_zona])
+        for proveedor, (output_file, correos_proveedor) in archivos_proveedores.items():
+            to_addrs = correos_proveedor.iloc[0]['Correo Principal']
+            cc_addrs = ';'.join(correos_proveedor.iloc[0]['CC'].split(';')) if pd.notna(correos_proveedor.iloc[0]['CC']) else ''
 
-        haciendas_faltantes = []
-        for proveedor in correos_df['Proveedor'].unique():
-            correos_proveedor = correos_df[correos_df['Proveedor'] == proveedor]
-            haciendas = correos_proveedor['Hacienda'].values
-            df_prov = df_proveedores[df_proveedores['Hacienda'].isin(haciendas)]
-
-            if df_prov.empty:
-                haciendas_faltantes.extend(haciendas)   
-                continue
-
-            to = correos_proveedor.iloc[0]['Correo Principal']
-            cc = correos_proveedor.iloc[0]['CC'] if pd.notna(correos_proveedor.iloc[0]['CC']) else ''
-            archivo = os.path.join(carpeta_proveedores, f'Proveedores_{proveedor.replace(" ", "_")}.xlsx')
-            copiar_formato_y_datos(df_prov, archivo_datos, proveedor, archivo)
-
-            asunto = f'Fotografía Aérea Drone 2025 {proveedor} - {mes_actual.capitalize()}'
-            cuerpo = f"""Buena tarde, comparto consolidado de suertes para volar con drone para despoblación del mes {mes_actual.capitalize()}. GRACIAS
+            subject = f'Fotografía Aérea Drone 2025 {proveedor} - {mes_actual}'
+            body = f"""Buena tarde, comparto consolidado de suertes para volar con drone para despoblación del mes {mes_actual}. GRACIAS
 
 En Incauca estamos optimizando las labores de campo y cosecha mediante el uso de fotografías aéreas con Drone de alto detalle para determinar lo siguiente:
 1. Mapa despoblación y resiembra (Distribución de paquetes)
@@ -167,19 +175,18 @@ En Incauca estamos optimizando las labores de campo y cosecha mediante el uso de
 4. Topografía para identificar problemas de drenaje. 
 5. Mapa de malezas.
 
-Los mapas de resiembra de las suertes aprobadas llegaran de 3 a 5 días después de la toma de fotografías. Toda esta información se mostrará en la plataforma web https://gis.manglar.com/
+Los mapas de resiembra de las suertes aprobadas llegarán de 3 a 5 días después de la toma de fotografías. Toda esta información se mostrará en la plataforma web https://gis.manglar.com/
 
-El costo por hectárea de esta tecnología es de $30.500 acordada con la empresa CNX - Manglar, Incauca asumirá el 50% resultando un costo por hectárea para el proveedor de $15.250."""
-
-            enviar_email(to, cc, asunto, cuerpo, [archivo])
+El costo por hectárea de esta tecnología es de $ 30.500 acordada con la empresa CNX - Manglar, Incauca asumirá el 50% resultando un costo por hectárea para el proveedor de $ 15.250."""
+            enviar_email(to_addrs, cc_addrs, subject, body, [output_file])
 
         if haciendas_faltantes:
-            mostrar_mensaje("Haciendas Faltantes", f"No se encontraron estas haciendas en el archivo de proveedores:\n{', '.join(haciendas_faltantes)}")
+            notificar_haciendas_faltantes(haciendas_faltantes)
 
-        mostrar_mensaje("Éxito", "Todos los correos fueron enviados correctamente.")
+        mostrar_exito("Todos los correos se enviaron exitosamente.")
 
     except Exception as e:
-        mostrar_error(f"Ocurrió un error inesperado: {e}")
+        mostrar_error(f"Ocurrió un error: {e}")
 
 if __name__ == "__main__":
     main()
